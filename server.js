@@ -344,37 +344,22 @@ app.delete('/settings/:id', async (req, res) => {
 
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
-  const userId = req.params.id;
-
-  if (!req.file) {
-    console.log('Ошибка: файл не был загружен');
-    return res.status(400).json({ message: 'Файл не загружен' });
-  }
-
-  console.log(`Загружен файл с именем: ${req.file.filename}`);
-
   try {
+    if (!req.file) {
+      throw new Error('File not uploaded');
+    }
     const avatarPath = `/uploads/${req.file.filename}`;
-    console.log(`Путь к аватарке: ${avatarPath}`);
-
-    // Обновляем путь к аватарке в базе данных
     const result = await pool.query(
       'UPDATE users SET avatar_url = $1 WHERE user_id = $2 RETURNING *',
-      [avatarPath, userId]
+      [avatarPath, req.params.id]
     );
-
     if (result.rowCount === 0) {
-      console.error(`Ошибка: пользователь с ID ${userId} не найден`);
-      return res.status(404).json({ message: 'Пользователь не найден' });
+      throw new Error(`User with ID ${req.params.id} not found`);
     }
-
-    res.status(200).json({
-      message: 'Аватарка успешно обновлена',
-      avatar_url: avatarPath,
-    });
+    res.status(200).json({ message: 'Avatar updated', avatar_url: avatarPath });
   } catch (err) {
-    console.error('Ошибка при загрузке аватарки:', err);
-    res.status(500).json({ message: 'Ошибка при загрузке аватарки' });
+    console.error('Error uploading avatar:', err);
+    res.status(500).json({ message: err.message });
   }
 });
 
