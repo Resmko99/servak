@@ -342,31 +342,35 @@ app.delete('/settings/:id', async (req, res) => {
 });
 
 app.post('/add_posts', async (req, res) => {
-  const { post_text, user_id } = req.body;
-
-  // Логируем поступившие данные для отладки
+  // Логируем полученные данные для отладки
   console.log('Полученные данные:', req.body);
+
+  const { post_text, user_id } = req.body;  // Получаем данные
 
   if (!post_text || post_text.trim().length === 0) {
     return res.status(400).json({ message: 'Текст поста не может быть пустым' });
   }
+
+  // Логируем проверенные данные
+  console.log('post_text:', post_text, 'user_id:', user_id);
 
   try {
     const result = await pool.query(
       `INSERT INTO posts (post_user_id, post_text, post_date, post_views, post_time)
        VALUES ($1, $2, CURRENT_DATE::text, 0, CURRENT_TIME::text)
        RETURNING post_id, post_user_id, post_text, post_date, post_views, post_time`,
-      [user_id, post_text]
+      [user_id, post_text]  // Передаем user_id и text
     );
 
     console.log("Добавлен новый пост:", result.rows[0]);
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(result.rows[0]);  // Возвращаем добавленный пост
   } catch (err) {
     console.error('Ошибка при создании поста:', err);
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
+
 
 // Роут для получения постов
 app.get('/posts/:userId', async (req, res) => {
