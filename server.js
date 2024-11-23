@@ -374,11 +374,24 @@ app.post('/add_posts', async (req, res) => {
 
 // Роут для получения постов
 app.get('/posts/:userId', async (req, res) => {
+  const { userId } = req.params; // Получаем userId из параметров запроса
+
   try {
+    // Запрос для получения постов с данными о пользователе
     const posts = await pool.query(
-      `SELECT post_id, post_text, post_date, post_time
-       FROM posts
-       ORDER BY post_date DESC, post_time DESC`
+      `SELECT 
+         p.post_id, 
+         p.post_text, 
+         p.post_date, 
+         p.post_time, 
+         p.post_views, 
+         u.user_name, 
+         u.user_avatar_url
+       FROM posts p
+       JOIN users u ON p.post_user_id = u.user_id
+       WHERE u.user_id = $1 OR $1 IS NULL
+       ORDER BY p.post_date DESC, p.post_time DESC`,
+      [userId]
     );
 
     if (posts.rows.length > 0) {
