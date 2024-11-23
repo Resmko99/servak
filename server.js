@@ -28,10 +28,14 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, 'uploads/');
+      const uploadPath = path.join(__dirname, 'uploads');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath); // Создаём папку, если её нет
+      }
+      cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname));
+      cb(null, `${Date.now()}-${file.originalname}`);
     }
   }),
   fileFilter: (req, file, cb) => {
@@ -39,10 +43,11 @@ const upload = multer({
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Неподдерживаемый формат файла'), false);
+      cb(new Error('Unsupported file type'), false);
     }
-  }
+  },
 });
+
 
 // Корневой маршрут
 app.get('/', (req, res) => {
