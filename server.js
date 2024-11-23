@@ -337,22 +337,59 @@ app.delete('/settings/:id', async (req, res) => {
   }
 });
 
+// Убедитесь, что папка для загрузки файлов существует
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  console.log('Папка "uploads" не существует, создаю...');
+  fs.mkdirSync(uploadDir);
+}
+
+// Настройка для обработки изображений
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + path.extname(file.originalname));
+    }
+  }),
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      console.error(`Ошибка: неподдерживаемый формат файла ${file.mimetype}`);
+      cb(new Error('Неподдерживаемый формат файла'), false);
+    }
+  }
+});
+
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
   const userId = req.params.id;
 
   if (!req.file) {
+    console.log('Ошибка: файл не был загружен');
     return res.status(400).json({ message: 'Файл не загружен' });
   }
 
+  console.log(`Загружен файл с именем: ${req.file.filename}`);
+
   try {
     const avatarPath = `/uploads/${req.file.filename}`;
-    
+    console.log(`Путь к аватарке: ${avatarPath}`);
+
     // Обновляем путь к аватарке в базе данных
-    await pool.query(
-      'UPDATE users SET avatar_url = $1 WHERE user_id = $2',
+    const result = await pool.query(
+      'UPDATE users SET avatar_url = $1 WHERE user_id = $2 RETURNING *',
       [avatarPath, userId]
     );
+
+    if (result.rowCount === 0) {
+      console.error(`Ошибка: пользователь с ID ${userId} не найден`);
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
 
     res.status(200).json({
       message: 'Аватарка успешно обновлена',
