@@ -341,6 +341,55 @@ app.delete('/settings/:id', async (req, res) => {
   }
 });
 
+app.post('/add_posts', async (req, res) => {
+  const { post_text, user_id } = req.body;  // Получаем текст поста и user_id из тела запроса
+
+  // Проверяем, что текст поста не пустой
+  if (!post_text || post_text.trim().length === 0) {
+    return res.status(400).json({ message: 'Текст поста не может быть пустым' });
+  }
+
+  try {
+    // Вставляем новый пост с user_id из тела запроса в базу данных
+    const result = await pool.query(
+      `INSERT INTO posts (post_user_id, post_text, post_date, post_views, post_time)
+       VALUES ($1, $2, CURRENT_DATE::text, 0, CURRENT_TIME::text)
+       RETURNING post_id, post_user_id, post_text, post_date, post_views, post_time`,
+      [user_id, post_text]  // Передаем user_id и text
+    );
+
+    // Логируем успешное добавление поста
+    console.log("Добавлен новый пост:", result.rows[0]);
+
+    // Возвращаем добавленный пост в ответ
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    // Логируем ошибку при добавлении поста
+    console.error('Ошибка при создании поста:', err);
+    res.status(500).json({ message: 'Ошибка на сервере' });
+  }
+});
+
+// Роут для получения постов
+app.get('/posts/:userId', async (req, res) => {
+  try {
+    const posts = await pool.query(
+      `SELECT post_id, post_text, post_date, post_time
+       FROM posts
+       ORDER BY post_date DESC, post_time DESC`
+    );
+
+    if (posts.rows.length > 0) {
+      res.json(posts.rows); // Возвращаем список постов
+    } else {
+      res.status(404).json([]); // Если постов нет, возвращаем пустой массив
+    }
+  } catch (err) {
+    console.error('Ошибка при получении постов:', err);
+    res.status(500).json({ message: 'Ошибка на сервере' });
+  }
+});
+
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
   try {
