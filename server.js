@@ -154,6 +154,36 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Маршрут для входа
+app.post('/forgot', async (req, res) => {
+  const { identifier } = req.body; // Теперь только номер телефона или user_acctag
+
+  if (!identifier) {
+    return res.status(400).json({ message: 'Номер телефона или ID обязательны' });
+  }
+
+  try {
+    // Получаем данные пользователя по номеру телефона или user_acctag
+    const result = await pool.query(
+      'SELECT user_id FROM users WHERE user_phone_number = $1 OR user_acctag = $1',
+      [identifier]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ message: 'Неверные учетные данные' });
+    }
+
+    const user = result.rows[0];
+
+    // Если все верно, возвращаем user_id
+    res.status(200).json({ message: 'Успешный вход', user_id: user.user_id });
+
+  } catch (err) {
+    console.error('Ошибка при выполнении запроса:', err);
+    res.status(500).json({ message: 'Ошибка при проверке данных' });
+  }
+});
+
 
 app.get('/home/:id', async (req, res) => {
   const userId = req.params.id; // Получаем ID из параметров запроса
