@@ -190,45 +190,38 @@ app.get('/home/:id', async (req, res) => {
 });
 
 app.get('/profile/:id', async (req, res) => {
-  const userId = req.params.id; // Получаем ID из параметров запроса
+  const userId = req.params.id;
 
   try {
-    // Выполняем запрос к базе данных для получения данных пользователя
     const result = await pool.query(
       'SELECT user_name, user_phone_number, user_acctag, avatar_url FROM users WHERE user_id = $1',
       [userId]
     );
 
-    // Проверяем, что пользователь существует
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Пользователь не найден' });
     }
 
-    // Получаем данные пользователя
     const user = result.rows[0];
 
-    // Проверяем на наличие null и подставляем значения по умолчанию
     const userName = user.user_name || 'Неизвестный пользователь';
     const userPhoneNumber = user.user_phone_number || 'Не указан номер телефона';
     const userAcctag = user.user_acctag || '@Неизвестный';
     const avatarUrl = user.avatar_url || null; // Если аватар отсутствует, то null
 
-    // Строим полный путь к изображению, если оно есть
-    const fullAvatarUrl = avatarUrl ? `http://95.163.223.203:3000/uploads/${avatarUrl}` : null;
-
-    // Отправляем данные пользователя
+    // Просто возвращаем имя файла аватара, а полный путь строится на клиенте
     res.status(200).json({
       user_name: userName,
       user_phone_number: userPhoneNumber,
       user_acctag: userAcctag,
-      avatar_url: fullAvatarUrl, // Добавляем URL аватара
+      avatar_url: avatarUrl, // Возвращаем только имя файла
     });
   } catch (err) {
-    // Логируем ошибку и отправляем сообщение об ошибке
     console.error('Ошибка получения данных пользователя:', err.message);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+
 
 
 // Маршрут для получения данных пользователя
