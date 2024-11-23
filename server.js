@@ -24,6 +24,13 @@ const pool = new Pool({
 // Убедитесь, что у вас настроен путь для доступа к загруженным файлам
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Убедитесь, что папка для загрузки файлов существует
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  console.log('Папка "uploads" не существует, создаю...');
+  fs.mkdirSync(uploadDir);
+}
+
 // Конфигурация multer
 const upload = multer({
   storage: multer.diskStorage({
@@ -149,222 +156,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
-app.get('/home/:id', async (req, res) => {
-  const userId = req.params.id; // Получаем ID из параметров запроса
-
-  try {
-    // Выполняем запрос к базе данных
-    const result = await pool.query(
-      'SELECT user_name, user_phone_number FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    // Проверяем, что пользователь существует
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
-
-    // Получаем данные пользователя
-    const user = result.rows[0];
-
-    // Проверяем на наличие null и подставляем значения по умолчанию
-    const userName = user.user_name || 'Неизвестный пользователь';
-    const userPhoneNumber = user.user_phone_number || 'Не указан номер телефона';
-
-    // Отправляем данные пользователя
-    res.status(200).json({
-      user_name: userName,
-      user_phone_number: userPhoneNumber,
-    });
-  } catch (err) {
-    // Логируем ошибку и отправляем сообщение об ошибке
-    console.error('Ошибка получения данных пользователя:', err.message);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
-
-app.get('/profile/:id', async (req, res) => {
-  const userId = req.params.id; // Получаем ID из параметров запроса
-
-  try {
-    // Выполняем запрос к базе данных для получения данных пользователя
-    const result = await pool.query(
-      'SELECT user_name, user_phone_number, user_acctag FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    // Проверяем, что пользователь существует
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
-
-    // Получаем данные пользователя
-    const user = result.rows[0];
-
-    // Проверяем на наличие null и подставляем значения по умолчанию
-    const userName = user.user_name || 'Неизвестный пользователь';
-    const userPhoneNumber = user.user_phone_number || 'Не указан номер телефона';
-    const userAcctag = user.user_acctag || '@Неизвестный';
-
-    // Отправляем данные пользователя
-    res.status(200).json({
-      user_name: userName,
-      user_phone_number: userPhoneNumber,
-      user_acctag: userAcctag,
-    });
-  } catch (err) {
-    // Логируем ошибку и отправляем сообщение об ошибке
-    console.error('Ошибка получения данных пользователя:', err.message);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
-
-// Маршрут для получения данных пользователя
-app.get('/settings/:id', async (req, res) => {
-  const userId = req.params.id;
-
-  try {
-    const result = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).send('Пользователь не найден');
-    }
-
-    res.status(200).json(result.rows[0]);
-  } catch (err) {
-    console.error('Ошибка при получении данных пользователя:', err);
-    res.status(500).send('Ошибка при получении данных');
-  }
-});
-
-// Маршрут для обновления данных пользователя
-app.patch('/settings/:id', async (req, res) => {
-  const userId = req.params.id;
-  const { user_name, user_phone_number, user_acctag } = req.body;
-
-  try {
-    // Проверяем, существует ли пользователь
-    const userCheck = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
-
-    // Обновляем данные в базе данных
-    let updatedValues = [];
-    let updateQuery = 'UPDATE users SET';
-
-    if (user_name) {
-      updatedValues.push(user_name);
-      updateQuery += ' user_name = $' + updatedValues.length;
-    }
-
-    if (user_acctag) {
-      updatedValues.push(user_acctag);
-      updateQuery += ' user_acctag = $' + updatedValues.length;
-    }
-
-    if (user_phone_number) {
-      updatedValues.push(user_phone_number);
-      updateQuery += ' user_phone_number = $' + updatedValues.length;
-    }
-
-    updateQuery += ' WHERE user_id = $' + (updatedValues.length + 1);
-
-    // Выполняем обновление с параметрами
-    updatedValues.push(userId);
-    await pool.query(updateQuery, updatedValues);
-
-    res.status(200).json({ message: 'Данные пользователя успешно обновлены' });
-  } catch (err) {
-    console.error('Ошибка при обновлении данных пользователя:', err.message);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
-
-// Маршрут для удаления пользователя
-app.delete('/settings/:id', async (req, res) => {
-  const userId = req.params.id;
-
-  try {
-    const userCheck = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
-
-    // Удаляем пользователя
-    await pool.query('DELETE FROM users WHERE user_id = $1', [userId]);
-
-    res.status(200).json({ message: 'Пользователь и связанные данные успешно удалены' });
-  } catch (err) {
-    console.error('Ошибка при удалении пользователя:', err.message);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
-
-// Маршрут для удаления пользователя
-app.delete('/settings/:id', async (req, res) => {
-  const userId = req.params.id;
-
-  try {
-    const userCheck = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
-
-    // Удаляем пользователя
-    await pool.query('DELETE FROM users WHERE user_id = $1', [userId]);
-
-    res.status(200).json({ message: 'Пользователь и связанные данные успешно удалены' });
-  } catch (err) {
-    console.error('Ошибка при удалении пользователя:', err.message);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
-
-// Убедитесь, что папка для загрузки файлов существует
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  console.log('Папка "uploads" не существует, создаю...');
-  fs.mkdirSync(uploadDir);
-}
-
-// Настройка для обработки изображений
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname));
-    }
-  }),
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      console.error(`Ошибка: неподдерживаемый формат файла ${file.mimetype}`);
-      cb(new Error('Неподдерживаемый формат файла'), false);
-    }
-  }
-});
-
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
   const userId = req.params.id;
@@ -403,5 +194,5 @@ app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
 
 // Запуск сервера
 app.listen(port, () => {
-  console.log(`Сервер работает на http://localhost:${port}`);
+  console.log(`Сервер работает на http://95.163.223.203:${port}`);
 });
