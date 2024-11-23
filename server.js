@@ -195,7 +195,7 @@ app.get('/profile/:id', async (req, res) => {
   try {
     // Выполняем запрос к базе данных для получения данных пользователя
     const result = await pool.query(
-      'SELECT user_name, user_phone_number, user_acctag FROM users WHERE user_id = $1',
+      'SELECT user_name, user_phone_number, user_acctag, avatar_url FROM users WHERE user_id = $1',
       [userId]
     );
 
@@ -211,12 +211,17 @@ app.get('/profile/:id', async (req, res) => {
     const userName = user.user_name || 'Неизвестный пользователь';
     const userPhoneNumber = user.user_phone_number || 'Не указан номер телефона';
     const userAcctag = user.user_acctag || '@Неизвестный';
+    const avatarUrl = user.avatar_url || null; // Если аватар отсутствует, то null
+
+    // Строим полный путь к изображению, если оно есть
+    const fullAvatarUrl = avatarUrl ? `http://95.163.223.203:3000/uploads/${avatarUrl}` : null;
 
     // Отправляем данные пользователя
     res.status(200).json({
       user_name: userName,
       user_phone_number: userPhoneNumber,
       user_acctag: userAcctag,
+      avatar_url: fullAvatarUrl, // Добавляем URL аватара
     });
   } catch (err) {
     // Логируем ошибку и отправляем сообщение об ошибке
@@ -224,6 +229,7 @@ app.get('/profile/:id', async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+
 
 // Маршрут для получения данных пользователя
 app.get('/settings/:id', async (req, res) => {
