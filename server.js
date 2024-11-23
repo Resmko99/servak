@@ -338,7 +338,7 @@ app.delete('/settings/:id', async (req, res) => {
 });
 
 // Маршрут для загрузки аватарки пользователя
-app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
+app.post('/settings/:id/avatar', upload.single('avatar'), async (req, res) => {
   const userId = req.params.id;
 
   if (!req.file) {
