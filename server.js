@@ -11,6 +11,10 @@ const port = 3000;
 // Настройка CORS (для запросов с Flutter-приложения)
 app.use(cors());
 app.use(express.json());
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Что-то пошло не так');
+});
 
 // Настройка подключения к PostgreSQL
 const pool = new Pool({
