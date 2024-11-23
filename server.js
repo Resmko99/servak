@@ -386,7 +386,7 @@ app.get('/posts/:userId', async (req, res) => {
          p.post_time, 
          p.post_views, 
          u.user_name, 
-         u.user_avatar_url
+         u.avatar_url
        FROM posts p
        JOIN users u ON p.post_user_id = u.user_id
        WHERE u.user_id = $1 OR $1 IS NULL
