@@ -48,6 +48,29 @@ const upload = multer({
   },
 });
 
+const postUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadPath = path.join(__dirname, 'posts');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true }); // Создаем папку, если её нет
+      }
+      cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${Date.now()}-${file.originalname}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type'), false);
+    }
+  },
+});
+
 
 // Корневой маршрут
 app.get('/', (req, res) => {
@@ -347,13 +370,44 @@ app.delete('/settings/:id', async (req, res) => {
   }
 });
 
+app.post('/upload-post-picture', postUpload.single('post_picture'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Файл не загружен' });
+    }
+    const picturePath = `/uploads/posts/${req.file.filename}`;
+    res.status(200).json({
+      message: 'Фотография поста успешно загружена',
+      picture_url: picturePath,
+    });
+  } catch (err) {
+    console.error('Ошибка при загрузке фотографии поста:', err);
+    res.status(500).json({ message: 'Ошибка при загрузке фотографии' });
+  }
+});
+
+// Маршрут для загрузки фотографии поста
+app.post('/upload-post-picture', postUpload.single('post_picture'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Файл не загружен' });
+    }
+    const picturePath = `/uploads/posts/${req.file.filename}`;
+    res.status(200).json({
+      message: 'Фотография поста успешно загружена',
+      picture_url: picturePath,
+    });
+  } catch (err) {
+    console.error('Ошибка при загрузке фотографии поста:', err);
+    res.status(500).json({ message: 'Ошибка при загрузке фотографии' });
+  }
+});
+
+// Обновленный маршрут для добавления постов с фотографией
 app.post('/add_posts', async (req, res) => {
-  // Логируем полученные данные для отладки
   console.log('Полученные данные:', req.body);
+  const { post_text, user_id, post_picture, post_date, post_time } = req.body;
 
-  const { post_text, user_id, post_picture, post_date, post_time } = req.body; // Получаем данные
-
-  // Проверка обязательных данных
   if (!post_text || post_text.trim().length === 0) {
     return res.status(400).json({ message: 'Текст поста не может быть пустым' });
   }
@@ -361,31 +415,26 @@ app.post('/add_posts', async (req, res) => {
     return res.status(400).json({ message: 'Идентификатор пользователя обязателен' });
   }
 
-  // Преобразуем переданную дату и время в нужные форматы
-  let currentDate = post_date ? post_date : new Date().toISOString().split('T')[0]; // Используем переданную дату или текущую
-  let currentTime = post_time ? post_time : new Date().toISOString().split('T')[1].split('.')[0]; // Используем переданное время или текущее
+  let currentDate = post_date || new Date().toISOString().split('T')[0];
+  let currentTime = post_time || new Date().toISOString().split('T')[1].split('.')[0];
 
-  // Проверяем формат даты и времени
   if (!isValidDate(currentDate)) {
     return res.status(400).json({ message: 'Некорректный формат даты' });
   }
-
   if (!isValidTime(currentTime)) {
     return res.status(400).json({ message: 'Некорректный формат времени' });
   }
 
   try {
-    // Запрос на добавление поста
     const result = await pool.query(
       `INSERT INTO posts (post_user_id, post_text, post_picture, post_date, post_views, post_time)
        VALUES ($1, $2, $3, $4, 0, $5)
        RETURNING post_id, post_user_id, post_text, post_picture, post_date, post_views, post_time`,
-      [user_id, post_text, post_picture, currentDate, currentTime] // Передача значений
+      [user_id, post_text, post_picture, currentDate, currentTime]
     );
 
     console.log('Добавлен новый пост:', result.rows[0]);
-
-    res.status(201).json(result.rows[0]); // Возвращаем добавленный пост
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Ошибка при создании поста:', err);
     res.status(500).json({ message: 'Ошибка на сервере' });
@@ -404,13 +453,9 @@ function isValidTime(time) {
   return regex.test(time);
 }
 
-
-
-
-// Роут для получения постов
+// Обновленный роут для получения всех постов с фотографиями
 app.get('/posts', async (req, res) => {
   try {
-    // Запрос для получения всех постов с информацией о пользователях
     const posts = await pool.query(
       `SELECT 
          posts.post_id, 
@@ -418,6 +463,7 @@ app.get('/posts', async (req, res) => {
          posts.post_date, 
          posts.post_time, 
          posts.post_views, 
+         posts.post_picture,
          users.user_name, 
          users.user_acctag, 
          users.avatar_url
@@ -427,13 +473,13 @@ app.get('/posts', async (req, res) => {
     );
 
     if (posts.rows.length > 0) {
-      // Форматируем ответ
       const formattedPosts = posts.rows.map(post => ({
         post_id: post.post_id,
         post_text: post.post_text,
         post_date: post.post_date,
         post_time: post.post_time,
         post_views: post.post_views,
+        post_picture: post.post_picture || null, // Если картинки нет, значение будет null
         user_name: post.user_name || 'Неизвестный пользователь',
         user_acctag: post.user_acctag || '@Неизвестный',
         avatar_url: post.avatar_url || null,
@@ -448,9 +494,6 @@ app.get('/posts', async (req, res) => {
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
-
-
-
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
   try {
