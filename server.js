@@ -537,6 +537,32 @@ app.get('/posts/user/:user_id', async (req, res) => {
   }
 });
 
+// Маршрут для увеличения просмотров поста
+app.patch('/posts/:id/views', async (req, res) => {
+  const postId = req.params.id;
+
+  try {
+    // Увеличиваем количество просмотров поста
+    const result = await pool.query(
+      `UPDATE posts 
+       SET post_views = post_views + 1 
+       WHERE post_id = $1 
+       RETURNING post_views`,
+      [postId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Пост не найден' });
+    }
+
+    res.status(200).json({ message: 'Просмотры обновлены', post_views: result.rows[0].post_views });
+  } catch (err) {
+    console.error('Ошибка при увеличении просмотров поста:', err.message);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+});
+
+
 
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
