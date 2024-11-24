@@ -394,8 +394,11 @@ app.post('/add_posts', async (req, res) => {
 
 // Получение постов для пользователя
 app.get('/posts/:userId', async (req, res) => {
-  const userId = req.params.userId;
-  
+  let userId = req.params.userId;
+
+  // Убедимся, что userId всегда будет строкой
+  userId = userId.toString();  // Преобразуем в строку
+
   try {
     const query = `
       SELECT 
@@ -433,7 +436,7 @@ app.get('/posts/:userId', async (req, res) => {
       });
     }
 
-    res.json(result.rows);
+    res.json(formattedPosts);
   } catch (err) {
     console.error('Database Error:', err);  // Выводим подробности ошибки в консоль
     res.status(500).json({
