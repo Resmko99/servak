@@ -379,11 +379,9 @@ app.post('/add_posts', async (req, res) => {
 
 
 // Роут для получения постов
-app.get('/posts/:userId', async (req, res) => {
+app.get('/posts', async (req, res) => {
   try {
-    const userId = String(req.params.userId); // Приводим к строке для совместимости с базой данных
-
-    // Запрос для получения постов с информацией о пользователе
+    // Запрос для получения всех постов с информацией о пользователях
     const posts = await pool.query(
       `SELECT 
          posts.post_id, 
@@ -396,9 +394,7 @@ app.get('/posts/:userId', async (req, res) => {
          users.avatar_url
        FROM posts
        JOIN users ON posts.post_user_id = users.user_id
-       WHERE posts.post_user_id = $1
-       ORDER BY posts.post_date DESC, posts.post_time DESC`,
-      [userId]
+       ORDER BY posts.post_date DESC, posts.post_time DESC`
     );
 
     if (posts.rows.length > 0) {
