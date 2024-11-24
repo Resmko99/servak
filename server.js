@@ -379,7 +379,7 @@ app.post('/upload-post-picture', postUpload.single('post_picture'), (req, res) =
     if (!req.file) {
       return res.status(400).json({ message: 'Файл не загружен' });
     }
-    const picturePath = `/posts/${req.file.filename}`; // Путь к изображению
+    const picturePath = `${req.file.filename}`; // Путь к изображению
     res.status(200).json({
       message: 'Фотография поста успешно загружена',
       picture_url: picturePath, // URL изображения для использования в посте
