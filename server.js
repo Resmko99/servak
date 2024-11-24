@@ -23,6 +23,7 @@ const pool = new Pool({
 
 // Убедитесь, что у вас настроен путь для доступа к загруженным файлам
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/posts', express.static(path.join(__dirname, 'posts')));
 
 // Конфигурация multer
 const upload = multer({
