@@ -487,6 +487,57 @@ app.get('/posts', async (req, res) => {
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
+
+// Маршрут для получения постов по post_user_id
+app.get('/posts/user/:user_id', async (req, res) => {
+  const userId = req.params.user_id; // Получаем user_id из параметров запроса
+
+  try {
+    // Выполняем запрос к базе данных для получения постов пользователя
+    const result = await pool.query(
+      `SELECT 
+         posts.post_id, 
+         posts.post_text, 
+         posts.post_date, 
+         posts.post_time, 
+         posts.post_views, 
+         posts.post_picture,
+         users.user_name, 
+         users.user_acctag, 
+         users.avatar_url
+       FROM posts
+       JOIN users ON posts.post_user_id = users.user_id
+       WHERE posts.post_user_id = $1
+       ORDER BY posts.post_date DESC, posts.post_time DESC`,
+      [userId]
+    );
+
+    // Проверяем, есть ли посты для этого пользователя
+    if (result.rows.length > 0) {
+      const formattedPosts = result.rows.map(post => ({
+        post_id: post.post_id,
+        post_text: post.post_text,
+        post_date: post.post_date,
+        post_time: post.post_time,
+        post_views: post.post_views,
+        post_picture: post.post_picture ? `http://95.163.223.203:3000/posts/${post.post_picture}` : null,
+        user_name: post.user_name || 'Неизвестный пользователь',
+        user_acctag: post.user_acctag || '@Неизвестный',
+        avatar_url: post.avatar_url || null,
+      }));
+
+      // Возвращаем посты
+      res.status(200).json(formattedPosts);
+    } else {
+      res.status(404).json({ message: 'Посты не найдены для этого пользователя' });
+    }
+  } catch (err) {
+    console.error('Ошибка при получении постов пользователя:', err.message);
+    res.status(500).json({ message: 'Ошибка на сервере' });
+  }
+});
+
+
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
   try {
