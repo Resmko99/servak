@@ -52,7 +52,7 @@ const upload = multer({
 const postUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      const uploadPath = path.join(__dirname, 'uploads', 'posts'); // Папка для хранения изображений
+      const uploadPath = path.join(__dirname, 'posts'); // Папка для хранения изображений
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true }); // Создаем папку, если её нет
       }
