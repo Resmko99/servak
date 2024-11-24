@@ -391,7 +391,6 @@ app.post('/add_posts', async (req, res) => {
   }
 });
 
-
 // Получение постов для пользователя
 app.get('/posts/:userId', async (req, res) => {
   let userId = req.params.userId;
@@ -416,7 +415,7 @@ app.get('/posts/:userId', async (req, res) => {
       ORDER BY p.post_date DESC, p.post_time DESC;
     `;
     const result = await pool.query(query, [userId]);
-    
+
     // Форматируем данные перед отправкой
     const formattedPosts = result.rows.map(post => ({
       post_id: post.post_id,
@@ -428,7 +427,7 @@ app.get('/posts/:userId', async (req, res) => {
       post_time: post.post_time || '00:00:00',
       post_views: parseInt(post.post_views || '0', 10), // Преобразование в число
     }));
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ 
         error: "Посты не найдены", 
@@ -447,6 +446,7 @@ app.get('/posts/:userId', async (req, res) => {
     });
   }
 });
+
 
 
 // Маршрут для загрузки аватарки пользователя
