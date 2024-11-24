@@ -347,30 +347,6 @@ app.delete('/settings/:id', async (req, res) => {
   }
 });
 
-// Маршрут для удаления пользователя
-app.delete('/settings/:id', async (req, res) => {
-  const userId = req.params.id;
-
-  try {
-    const userCheck = await pool.query(
-      'SELECT * FROM users WHERE user_id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
-
-    // Удаляем пользователя
-    await pool.query('DELETE FROM users WHERE user_id = $1', [userId]);
-
-    res.status(200).json({ message: 'Пользователь и связанные данные успешно удалены' });
-  } catch (err) {
-    console.error('Ошибка при удалении пользователя:', err.message);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
-});
-
 app.post('/add_posts', async (req, res) => {
   // Логируем полученные данные для отладки
   console.log('Полученные данные:', req.body);
@@ -405,7 +381,7 @@ app.post('/add_posts', async (req, res) => {
 // Роут для получения постов
 app.get('/posts/:userId', async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const userId = String(req.params.userId); // Приводим к строке для совместимости с базой данных
 
     // Запрос для получения постов с информацией о пользователе
     const posts = await pool.query(
@@ -447,6 +423,7 @@ app.get('/posts/:userId', async (req, res) => {
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
+
 
 
 // Маршрут для загрузки аватарки пользователя
