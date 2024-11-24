@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const bodyParser = require('body-parser');
 
 const app = express();
 const port = 3000;
@@ -11,6 +12,7 @@ const port = 3000;
 // Настройка CORS (для запросов с Flutter-приложения)
 app.use(cors());
 app.use(express.json());
+
 
 // Настройка подключения к PostgreSQL
 const pool = new Pool({
@@ -23,6 +25,8 @@ const pool = new Pool({
 
 // Убедитесь, что у вас настроен путь для доступа к загруженным файлам
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use(bodyParser.json());
 
 // Конфигурация multer
 const upload = multer({
@@ -185,37 +189,31 @@ app.post('/forgot', async (req, res) => {
 });
 
 
-app.get('/home/:id', async (req, res) => {
-  const userId = req.params.id; // Получаем ID из параметров запроса
+app.get('/home/:userId', async (req, res) => {
+  const userId = req.params.userId;
 
   try {
-    // Выполняем запрос к базе данных
-    const result = await pool.query(
-      'SELECT user_name, user_phone_number FROM users WHERE user_id = $1',
-      [userId]
-    );
+    const query = `
+      SELECT user_id, user_name, user_phone_number, avatar_url
+      FROM users
+      WHERE user_id = $1;
+    `;
+    const result = await pool.query(query, [userId]);
 
-    // Проверяем, что пользователь существует
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      res.status(200).json({
+        user_id: user.user_id,
+        user_name: user.user_name || 'Неизвестный пользователь',
+        user_phone_number: user.user_phone_number || 'Не указан',
+        avatar_url: user.avatar_url || null,
+      });
+    } else {
+      res.status(404).json({ error: 'Пользователь не найден' });
     }
-
-    // Получаем данные пользователя
-    const user = result.rows[0];
-
-    // Проверяем на наличие null и подставляем значения по умолчанию
-    const userName = user.user_name || 'Неизвестный пользователь';
-    const userPhoneNumber = user.user_phone_number || 'Не указан номер телефона';
-
-    // Отправляем данные пользователя
-    res.status(200).json({
-      user_name: userName,
-      user_phone_number: userPhoneNumber,
-    });
-  } catch (err) {
-    // Логируем ошибку и отправляем сообщение об ошибке
-    console.error('Ошибка получения данных пользователя:', err.message);
-    res.status(500).json({ message: 'Ошибка сервера' });
+  } catch (error) {
+    console.error('Ошибка при получении данных пользователя:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
@@ -372,79 +370,66 @@ app.delete('/settings/:id', async (req, res) => {
 });
 
 app.post('/add_posts', async (req, res) => {
-  // Логируем полученные данные для отладки
-  console.log('Полученные данные:', req.body);
+  const { user_id, user_name, post_text } = req.body;
 
-  const { post_text, user_id } = req.body;  // Получаем данные
-
-  if (!post_text || post_text.trim().length === 0) {
-    return res.status(400).json({ message: 'Текст поста не может быть пустым' });
+  if (!user_id || !post_text) {
+    return res.status(400).json({ error: 'Необходимо указать user_id и post_text' });
   }
 
-  // Логируем проверенные данные
-  console.log('post_text:', post_text, 'user_id:', user_id);
-
   try {
-    const result = await pool.query(
-      `INSERT INTO posts (post_user_id, post_text, post_date, post_views, post_time)
-       VALUES ($1, $2, CURRENT_DATE::text, 0, CURRENT_TIME::text)
-       RETURNING post_id, post_user_id, post_text, post_date, post_views, post_time`,
-      [user_id, post_text]  // Передаем user_id и text
-    );
+    const query = `
+      INSERT INTO posts (post_user_id, post_text, post_date, post_time, post_views)
+      VALUES ($1, $2, CURRENT_DATE, CURRENT_TIME, 0)
+      RETURNING post_id;
+    `;
+    const result = await pool.query(query, [user_id, post_text]);
 
-    console.log("Добавлен новый пост:", result.rows[0]);
-
-    res.status(201).json(result.rows[0]);  // Возвращаем добавленный пост
-  } catch (err) {
-    console.error('Ошибка при создании поста:', err);
-    res.status(500).json({ message: 'Ошибка на сервере' });
+    res.status(201).json({ post_id: result.rows[0].post_id });
+  } catch (error) {
+    console.error('Ошибка при добавлении поста:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
 
-// Роут для получения постов
+// Получение постов для пользователя
 app.get('/posts/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  
   try {
-    const userId = req.params.userId;
-
-    // Запрос для получения постов с информацией о пользователе
-    const posts = await pool.query(
-      `SELECT 
-         posts.post_id, 
-         posts.post_text, 
-         posts.post_date, 
-         posts.post_time, 
-         posts.post_views, 
-         users.user_name, 
-         users.user_acctag, 
-         users.avatar_url
-       FROM posts
-       JOIN users ON posts.post_user_id = users.user_id
-       WHERE posts.post_user_id = $1
-       ORDER BY posts.post_date DESC, posts.post_time DESC`,
-      [userId]
-    );
-
-    if (posts.rows.length > 0) {
-      // Форматируем ответ
-      const formattedPosts = posts.rows.map(post => ({
-        post_id: post.post_id,
-        post_text: post.post_text,
-        post_date: post.post_date,
-        post_time: post.post_time,
-        post_views: post.post_views,
-        user_name: post.user_name || 'Неизвестный пользователь',
-        user_acctag: post.user_acctag || '@Неизвестный',
-        avatar_url: post.avatar_url || null,
-      }));
-
-      res.status(200).json(formattedPosts);
-    } else {
-      res.status(404).json({ message: 'Посты не найдены' });
-    }
-  } catch (err) {
-    console.error('Ошибка при получении постов:', err.message);
-    res.status(500).json({ message: 'Ошибка на сервере' });
+    const query = `
+      SELECT 
+        p.post_id,
+        p.post_user_id,
+        u.user_name,
+        u.avatar_url,
+        p.post_text,
+        p.post_date,
+        p.post_time,
+        p.post_views
+      FROM posts p
+      LEFT JOIN users u ON p.post_user_id = u.user_id
+      WHERE p.post_user_id = $1
+      ORDER BY p.post_date DESC, p.post_time DESC;
+    `;
+    const result = await pool.query(query, [userId]);
+    
+    // Форматируем данные перед отправкой
+    const formattedPosts = result.rows.map(post => ({
+      post_id: post.post_id,
+      user_id: post.post_user_id,
+      user_name: post.user_name || 'Анонимный пользователь',
+      avatar_url: post.avatar_url || null,
+      post_text: post.post_text || '',
+      post_date: post.post_date || 'Не указана',
+      post_time: post.post_time || '00:00:00',
+      post_views: parseInt(post.post_views || '0', 10), // Преобразование в число
+    }));
+    
+    res.status(200).json(formattedPosts);
+  } catch (error) {
+    console.error('Ошибка при получении постов:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
