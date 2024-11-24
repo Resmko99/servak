@@ -347,13 +347,9 @@ app.delete('/settings/:id', async (req, res) => {
   }
 });
 
-app.post('/add_posts', async (req, res) => {
-  // Логируем полученные данные для отладки
-  console.log('Полученные данные:', req.body);
+app.post('/add_posts', upload.single('post_picture'), async (req, res) => {
+  const { post_text, user_id, post_date, post_time } = req.body;
 
-  const { post_text, user_id, post_picture, post_date, post_time } = req.body; // Получаем данные
-
-  // Проверка обязательных данных
   if (!post_text || post_text.trim().length === 0) {
     return res.status(400).json({ message: 'Текст поста не может быть пустым' });
   }
@@ -361,9 +357,8 @@ app.post('/add_posts', async (req, res) => {
     return res.status(400).json({ message: 'Идентификатор пользователя обязателен' });
   }
 
-  // Преобразуем переданную дату и время в нужные форматы
-  let currentDate = post_date ? post_date : new Date().toISOString().split('T')[0]; // Используем переданную дату или текущую
-  let currentTime = post_time ? post_time : new Date().toISOString().split('T')[1].split('.')[0]; // Используем переданное время или текущее
+  let currentDate = post_date ? post_date : new Date().toISOString().split('T')[0];
+  let currentTime = post_time ? post_time : new Date().toISOString().split('T')[1].split('.')[0];
 
   // Проверяем формат даты и времени
   if (!isValidDate(currentDate)) {
@@ -374,13 +369,16 @@ app.post('/add_posts', async (req, res) => {
     return res.status(400).json({ message: 'Некорректный формат времени' });
   }
 
+  // Получаем путь к загруженному изображению
+  const postPicture = req.file ? `/uploads/${req.file.filename}` : null;
+
   try {
-    // Запрос на добавление поста
+    // Вставляем данные в базу данных
     const result = await pool.query(
       `INSERT INTO posts (post_user_id, post_text, post_picture, post_date, post_views, post_time)
        VALUES ($1, $2, $3, $4, 0, $5)
        RETURNING post_id, post_user_id, post_text, post_picture, post_date, post_views, post_time`,
-      [user_id, post_text, post_picture, currentDate, currentTime] // Передача значений
+      [user_id, post_text, postPicture, currentDate, currentTime]
     );
 
     console.log('Добавлен новый пост:', result.rows[0]);
@@ -392,17 +390,6 @@ app.post('/add_posts', async (req, res) => {
   }
 });
 
-// Функция для проверки корректности формата даты (YYYY-MM-DD)
-function isValidDate(date) {
-  const regex = /^\d{4}-\d{2}-\d{2}$/;
-  return regex.test(date);
-}
-
-// Функция для проверки корректности формата времени (HH:mm:ss)
-function isValidTime(time) {
-  const regex = /^([01]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$/;
-  return regex.test(time);
-}
 
 
 
