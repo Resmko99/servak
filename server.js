@@ -351,31 +351,34 @@ app.post('/add_posts', async (req, res) => {
   // Логируем полученные данные для отладки
   console.log('Полученные данные:', req.body);
 
-  const { post_text, user_id } = req.body;  // Получаем данные
+  const { post_text, user_id, post_picture } = req.body; // Получаем данные
 
+  // Проверка обязательных данных
   if (!post_text || post_text.trim().length === 0) {
     return res.status(400).json({ message: 'Текст поста не может быть пустым' });
   }
-
-  // Логируем проверенные данные
-  console.log('post_text:', post_text, 'user_id:', user_id);
+  if (!user_id) {
+    return res.status(400).json({ message: 'Идентификатор пользователя обязателен' });
+  }
 
   try {
+    // Запрос на добавление поста
     const result = await pool.query(
-      `INSERT INTO posts (post_user_id, post_text, post_date, post_views, post_time)
-       VALUES ($1, $2, CURRENT_DATE::text, 0, CURRENT_TIME::text)
-       RETURNING post_id, post_user_id, post_text, post_date, post_views, post_time`,
-      [user_id, post_text]  // Передаем user_id и text
+      `INSERT INTO posts (post_user_id, post_text, post_picture, post_date, post_views, post_time)
+       VALUES ($1, $2, $3, CURRENT_DATE, 0, CURRENT_TIME)
+       RETURNING post_id, post_user_id, post_text, post_picture, post_date, post_views, post_time`,
+      [user_id, post_text, post_picture] // Передача значений
     );
 
-    console.log("Добавлен новый пост:", result.rows[0]);
+    console.log('Добавлен новый пост:', result.rows[0]);
 
-    res.status(201).json(result.rows[0]);  // Возвращаем добавленный пост
+    res.status(201).json(result.rows[0]); // Возвращаем добавленный пост
   } catch (err) {
     console.error('Ошибка при создании поста:', err);
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
+
 
 
 // Роут для получения постов
