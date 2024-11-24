@@ -347,6 +347,24 @@ app.delete('/settings/:id', async (req, res) => {
   }
 });
 
+// Функции проверки даты и времени
+function isValidDate(dateString) {
+  const regex = /^\d{4}-\d{2}-\d{2}$/;  // Проверка формата YYYY-MM-DD
+  if (!dateString.match(regex)) return false;
+
+  const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+  const date = new Date(year, month - 1, day);
+
+  // Проверка, что введенная дата действительно существует
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function isValidTime(timeString) {
+  const regex = /^([01]?[0-9]|2[0-3]):([0-5]?[0-9]):([0-5]?[0-9])$/;  // Проверка формата HH:MM:SS
+  return regex.test(timeString);
+}
+
+// Маршрут для добавления поста
 app.post('/add_posts', upload.single('post_picture'), async (req, res) => {
   const { post_text, user_id, post_date, post_time } = req.body;
 
@@ -389,10 +407,6 @@ app.post('/add_posts', upload.single('post_picture'), async (req, res) => {
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
-
-
-
-
 
 // Роут для получения постов
 app.get('/posts', async (req, res) => {
