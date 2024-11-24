@@ -217,7 +217,7 @@ app.get('/home/:id', async (req, res) => {
   try {
     // Выполняем запрос к базе данных
     const result = await pool.query(
-      'SELECT user_name, user_phone_number FROM users WHERE user_id = $1',
+      'SELECT user_name, user_phone_number, avatar_url FROM users WHERE user_id = $1',
       [userId]
     );
 
