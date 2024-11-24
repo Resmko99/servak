@@ -537,29 +537,6 @@ app.get('/posts/user/:user_id', async (req, res) => {
   }
 });
 
-app.get('/posts/views/check', async (req, res) => {
-  const { postId, userId } = req.query;
-
-  try {
-    console.log(`Запрос на проверку просмотра для postId: ${postId}, userId: ${userId}`);  // Лог запроса
-    const result = await pool.query(
-      'SELECT 1 FROM post_views WHERE post_id = $1 AND user_id = $2',
-      [postId, userId]
-    );
-
-    if (result.rowCount > 0) {
-      console.log('Пост уже был просмотрен этим пользователем');  // Лог, если просмотр был зафиксирован
-      return res.json({ hasViewed: true });
-    } else {
-      console.log('Пост не был просмотрен');  // Лог, если просмотр еще не был зафиксирован
-      return res.json({ hasViewed: false });
-    }
-  } catch (error) {
-    console.error('Ошибка при проверке просмотра:', error);  // Лог ошибки
-    res.status(500).json({ message: 'Ошибка на сервере' });
-  }
-});
-
 
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
