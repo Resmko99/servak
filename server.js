@@ -232,11 +232,13 @@ app.get('/home/:id', async (req, res) => {
     // Проверяем на наличие null и подставляем значения по умолчанию
     const userName = user.user_name || 'Неизвестный пользователь';
     const userPhoneNumber = user.user_phone_number || 'Не указан номер телефона';
+    const userPhotoUrl = user.avatar_url
 
     // Отправляем данные пользователя
     res.status(200).json({
       user_name: userName,
       user_phone_number: userPhoneNumber,
+      avatar_url: userPhotoUrl,
     });
   } catch (err) {
     // Логируем ошибку и отправляем сообщение об ошибке
