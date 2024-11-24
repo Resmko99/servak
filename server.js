@@ -548,7 +548,7 @@ app.patch('/posts/views/:postId', async (req, res) => {
   try {
     // Проверяем, просматривал ли пользователь этот пост
     const checkView = await pool.query(
-      SELECT 1 FROM post_views WHERE post_id = $1 AND user_id = $2,
+      'SELECT 1 FROM post_views WHERE post_id = $1 AND user_id = $2',
       [postId, userId]
     );
 
@@ -559,13 +559,13 @@ app.patch('/posts/views/:postId', async (req, res) => {
 
     // Обновляем количество просмотров поста
     await pool.query(
-      UPDATE posts SET post_views = post_views + 1 WHERE post_id = $1,
+      'UPDATE posts SET post_views = post_views + 1 WHERE post_id = $1',
       [postId]
     );
 
     // Добавляем запись о просмотре
     await pool.query(
-      INSERT INTO post_views (post_id, user_id) VALUES ($1, $2),
+      'INSERT INTO post_views (post_id, user_id) VALUES ($1, $2)',
       [postId, userId]
     );
 
