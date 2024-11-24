@@ -426,10 +426,22 @@ app.get('/posts/:userId', async (req, res) => {
       post_views: parseInt(post.post_views || '0', 10), // Преобразование в число
     }));
     
-    res.status(200).json(formattedPosts);
-  } catch (error) {
-    console.error('Ошибка при получении постов:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: "Посты не найдены", 
+        code: 404 
+      });
+    }
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Database Error:', err);  // Выводим подробности ошибки в консоль
+    res.status(500).json({
+      error: 'Ошибка сервера',
+      code: 500,
+      message: err.message,
+      stack: err.stack,  // Стек ошибок для отладки
+    });
   }
 });
 
