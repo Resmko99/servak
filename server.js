@@ -48,25 +48,27 @@ const upload = multer({
   },
 });
 
+// Настройка хранилища для multer
 const postUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      const uploadPath = path.join(__dirname, 'posts');
+      const uploadPath = path.join(__dirname, 'uploads', 'posts'); // Папка для хранения изображений
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true }); // Создаем папку, если её нет
       }
       cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
+      // Уникальное имя для файла
       cb(null, `${Date.now()}-${file.originalname}`);
     },
   }),
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
+      cb(null, true); // Если файл подходящий по типу
     } else {
-      cb(new Error('Unsupported file type'), false);
+      cb(new Error('Unsupported file type'), false); // Ошибка для неподдерживаемых типов
     }
   },
 });
@@ -370,15 +372,16 @@ app.delete('/settings/:id', async (req, res) => {
   }
 });
 
+// Роут для загрузки изображения
 app.post('/upload-post-picture', postUpload.single('post_picture'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Файл не загружен' });
     }
-    const picturePath = `/uploads/posts/${req.file.filename}`;
+    const picturePath = `/posts/${req.file.filename}`; // Путь к изображению
     res.status(200).json({
       message: 'Фотография поста успешно загружена',
-      picture_url: picturePath,
+      picture_url: picturePath, // URL изображения для использования в посте
     });
   } catch (err) {
     console.error('Ошибка при загрузке фотографии поста:', err);
@@ -386,28 +389,11 @@ app.post('/upload-post-picture', postUpload.single('post_picture'), (req, res) =
   }
 });
 
-// Маршрут для загрузки фотографии поста
-app.post('/upload-post-picture', postUpload.single('post_picture'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'Файл не загружен' });
-    }
-    const picturePath = `/uploads/posts/${req.file.filename}`;
-    res.status(200).json({
-      message: 'Фотография поста успешно загружена',
-      picture_url: picturePath,
-    });
-  } catch (err) {
-    console.error('Ошибка при загрузке фотографии поста:', err);
-    res.status(500).json({ message: 'Ошибка при загрузке фотографии' });
-  }
-});
-
-// Обновленный маршрут для добавления постов с фотографией
 app.post('/add_posts', async (req, res) => {
   console.log('Полученные данные:', req.body);
   const { post_text, user_id, post_picture, post_date, post_time } = req.body;
 
+  // Проверяем наличие текста поста и идентификатора пользователя
   if (!post_text || post_text.trim().length === 0) {
     return res.status(400).json({ message: 'Текст поста не может быть пустым' });
   }
@@ -418,6 +404,7 @@ app.post('/add_posts', async (req, res) => {
   let currentDate = post_date || new Date().toISOString().split('T')[0];
   let currentTime = post_time || new Date().toISOString().split('T')[1].split('.')[0];
 
+  // Проверка на корректность даты и времени
   if (!isValidDate(currentDate)) {
     return res.status(400).json({ message: 'Некорректный формат даты' });
   }
@@ -425,16 +412,19 @@ app.post('/add_posts', async (req, res) => {
     return res.status(400).json({ message: 'Некорректный формат времени' });
   }
 
+  // Если изображение было загружено, сохраняем путь к файлу
+  const postPictureUrl = post_picture || null; // Используем URL, полученный от загрузки
+
   try {
     const result = await pool.query(
       `INSERT INTO posts (post_user_id, post_text, post_picture, post_date, post_views, post_time)
        VALUES ($1, $2, $3, $4, 0, $5)
        RETURNING post_id, post_user_id, post_text, post_picture, post_date, post_views, post_time`,
-      [user_id, post_text, post_picture, currentDate, currentTime]
+      [user_id, post_text, postPictureUrl, currentDate, currentTime]
     );
 
     console.log('Добавлен новый пост:', result.rows[0]);
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(result.rows[0]); // Отправляем ответ с добавленным постом
   } catch (err) {
     console.error('Ошибка при создании поста:', err);
     res.status(500).json({ message: 'Ошибка на сервере' });
