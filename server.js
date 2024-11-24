@@ -537,6 +537,44 @@ app.get('/posts/user/:user_id', async (req, res) => {
   }
 });
 
+app.patch('/posts/views/:postId', async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.body.user_id; // Получаем ID пользователя из тела запроса
+
+  if (!userId) {
+    return res.status(400).json({ message: 'Идентификатор пользователя обязателен' });
+  }
+
+  try {
+    // Проверяем, просматривал ли пользователь этот пост
+    const checkView = await pool.query(
+      SELECT 1 FROM post_views WHERE post_id = $1 AND user_id = $2,
+      [postId, userId]
+    );
+
+    if (checkView.rowCount > 0) {
+      // Если запись о просмотре уже существует, не увеличиваем счетчик
+      return res.status(200).json({ message: 'Просмотр уже зафиксирован' });
+    }
+
+    // Обновляем количество просмотров поста
+    await pool.query(
+      UPDATE posts SET post_views = post_views + 1 WHERE post_id = $1,
+      [postId]
+    );
+
+    // Добавляем запись о просмотре
+    await pool.query(
+      INSERT INTO post_views (post_id, user_id) VALUES ($1, $2),
+      [postId, userId]
+    );
+
+    res.status(200).json({ message: 'Просмотр успешно зафиксирован' });
+  } catch (err) {
+    console.error('Ошибка при обновлении просмотров:', err);
+    res.status(500).json({ message: 'Ошибка на сервере' });
+  }
+});
 
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
