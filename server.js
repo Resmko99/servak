@@ -361,11 +361,20 @@ app.post('/add_posts', async (req, res) => {
     return res.status(400).json({ message: 'Идентификатор пользователя обязателен' });
   }
 
-  try {
-    // Если дата и время не переданы, используем текущие значения
-    const currentDate = post_date || new Date().toISOString().split('T')[0]; // Дата в формате YYYY-MM-DD
-    const currentTime = post_time || new Date().toISOString().split('T')[1].split('.')[0]; // Время в формате HH:mm:ss
+  // Преобразуем переданную дату и время в нужные форматы
+  let currentDate = post_date ? post_date : new Date().toISOString().split('T')[0]; // Используем переданную дату или текущую
+  let currentTime = post_time ? post_time : new Date().toISOString().split('T')[1].split('.')[0]; // Используем переданное время или текущее
 
+  // Проверяем формат даты и времени
+  if (!isValidDate(currentDate)) {
+    return res.status(400).json({ message: 'Некорректный формат даты' });
+  }
+
+  if (!isValidTime(currentTime)) {
+    return res.status(400).json({ message: 'Некорректный формат времени' });
+  }
+
+  try {
     // Запрос на добавление поста
     const result = await pool.query(
       `INSERT INTO posts (post_user_id, post_text, post_picture, post_date, post_views, post_time)
@@ -382,6 +391,19 @@ app.post('/add_posts', async (req, res) => {
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
+
+// Функция для проверки корректности формата даты (YYYY-MM-DD)
+function isValidDate(date) {
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  return regex.test(date);
+}
+
+// Функция для проверки корректности формата времени (HH:mm:ss)
+function isValidTime(time) {
+  const regex = /^([01]?[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$/;
+  return regex.test(time);
+}
+
 
 
 
