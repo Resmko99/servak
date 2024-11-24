@@ -405,22 +405,49 @@ app.post('/add_posts', async (req, res) => {
 // Роут для получения постов
 app.get('/posts/:userId', async (req, res) => {
   try {
+    const userId = req.params.userId;
+
+    // Запрос для получения постов с информацией о пользователе
     const posts = await pool.query(
-      `SELECT post_id, post_text, post_date, post_time
+      `SELECT 
+         posts.post_id, 
+         posts.post_text, 
+         posts.post_date, 
+         posts.post_time, 
+         posts.post_views, 
+         users.user_name, 
+         users.user_acctag, 
+         users.avatar_url
        FROM posts
-       ORDER BY post_date DESC, post_time DESC`
+       JOIN users ON posts.post_user_id = users.user_id
+       WHERE posts.post_user_id = $1
+       ORDER BY posts.post_date DESC, posts.post_time DESC`,
+      [userId]
     );
 
     if (posts.rows.length > 0) {
-      res.json(posts.rows); // Возвращаем список постов
+      // Форматируем ответ
+      const formattedPosts = posts.rows.map(post => ({
+        post_id: post.post_id,
+        post_text: post.post_text,
+        post_date: post.post_date,
+        post_time: post.post_time,
+        post_views: post.post_views,
+        user_name: post.user_name || 'Неизвестный пользователь',
+        user_acctag: post.user_acctag || '@Неизвестный',
+        avatar_url: post.avatar_url || null,
+      }));
+
+      res.status(200).json(formattedPosts);
     } else {
-      res.status(404).json([]); // Если постов нет, возвращаем пустой массив
+      res.status(404).json({ message: 'Посты не найдены' });
     }
   } catch (err) {
-    console.error('Ошибка при получении постов:', err);
+    console.error('Ошибка при получении постов:', err.message);
     res.status(500).json({ message: 'Ошибка на сервере' });
   }
 });
+
 
 // Маршрут для загрузки аватарки пользователя
 app.post('/upload-avatar/:id', upload.single('avatar'), async (req, res) => {
