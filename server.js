@@ -351,7 +351,7 @@ app.post('/add_posts', async (req, res) => {
   // Логируем полученные данные для отладки
   console.log('Полученные данные:', req.body);
 
-  const { post_text, user_id, post_picture } = req.body; // Получаем данные
+  const { post_text, user_id, post_picture, post_date, post_time } = req.body; // Получаем данные
 
   // Проверка обязательных данных
   if (!post_text || post_text.trim().length === 0) {
@@ -362,12 +362,16 @@ app.post('/add_posts', async (req, res) => {
   }
 
   try {
+    // Если дата и время не переданы, используем текущие значения
+    const currentDate = post_date || new Date().toISOString().split('T')[0]; // Дата в формате YYYY-MM-DD
+    const currentTime = post_time || new Date().toISOString().split('T')[1].split('.')[0]; // Время в формате HH:mm:ss
+
     // Запрос на добавление поста
     const result = await pool.query(
       `INSERT INTO posts (post_user_id, post_text, post_picture, post_date, post_views, post_time)
-       VALUES ($1, $2, $3, CURRENT_DATE, 0, CURRENT_TIME)
+       VALUES ($1, $2, $3, $4, 0, $5)
        RETURNING post_id, post_user_id, post_text, post_picture, post_date, post_views, post_time`,
-      [user_id, post_text, post_picture] // Передача значений
+      [user_id, post_text, post_picture, currentDate, currentTime] // Передача значений
     );
 
     console.log('Добавлен новый пост:', result.rows[0]);
